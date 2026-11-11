@@ -1,0 +1,54 @@
+# Reads UKI US Open results from results.gacsystems.com and publishes them to the tracker's results.json.
+# Each run keeps checking every 90 seconds for 55 minutes; a new run starts every hour
+# during event days (Nov 18–22, roughly 7 AM to 11 PM Eastern).
+name: Read US Open results
+
+on:
+  schedule:
+    - cron: "2 11-23 18-22 11 *"   # 6 AM–6 PM Eastern start times (UTC hours 11–23)
+    - cron: "2 0-3 19-23 11 *"     # evening sessions, 7–10 PM Eastern
+  workflow_dispatch:
+    inputs:
+      minutes:
+        description: "How long to keep checking (0 = one pass)"
+        default: "55"
+      snapshot:
+        description: "Save screen text and screenshots for tuning"
+        type: boolean
+        default: false
+      dry_run:
+        description: "Read only, don't post to the tracker"
+        type: boolean
+        default: false
+
+concurrency:
+  group: read-results
+  cancel-in-progress: false
+
+jobs:
+  read:
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm test -- --test-skip-pattern="reader reads fake site"
+      - name: Read and post results
+        run: node reader.mjs
+        env:
+          SPACEFAST_API_KEY: ${{ secrets.SPACEFAST_API_KEY }}
+          RUN_MINUTES: ${{ github.event.inputs.minutes || '55' }}
+          SNAPSHOT_DIR: ${{ github.event.inputs.snapshot == 'true' && 'snapshots' || '' }}
+          DRY_RUN: ${{ github.event.inputs.dry_run == 'true' && '1' || '' }}
+      - name: Keep screen snapshots
+        if: always() && github.event.inputs.snapshot == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshots
+          path: snapshots/
+          if-no-files-found: ignore
