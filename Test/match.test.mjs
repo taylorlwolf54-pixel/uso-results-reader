@@ -1,0 +1,23 @@
+import test from 'node:test'; import assert from 'node:assert/strict';
+import {buildIndex,matchClass,matchDate,matchEntrant,parseValues,recordsFromScreen} from '../match.mjs';
+import {entries} from './fixture.mjs';
+const ix=buildIndex(entries);
+test('class',()=>{assert.equal(matchClass('Ring 1 - US Open Agility - Wed',ix),'US Open Agility');assert.equal(matchClass('Speedstakes Round 1',ix),'Speedstakes Rd 1');assert.equal(matchClass('Gamblers',ix),null)});
+test('date',()=>{assert.equal(matchDate('Wednesday'),'2026-11-18');assert.equal(matchDate('Nov 19'),'2026-11-19');assert.equal(matchDate('11/21/2026'),'2026-11-21');assert.equal(matchDate('Ring 1'),null)});
+test('entrant',()=>{assert.equal(matchEntrant('1 | Melanie Rock | Maui Jim | 31.22',ix).dog,'Maui Jim');assert.equal(matchEntrant('2 | Ariat | M. Rock | 30.1',ix).dog,'Ariat');assert.equal(matchEntrant('Trust | Someone Else',ix),null)});
+test('values',()=>{const e={handler:'Melanie Rock',dog:'Ariat'};
+ assert.deepEqual(parseValues('1st | Melanie Rock | Ariat | 31.22 | 0 faults',e),{placement:1,time:'31.22',faults:0});
+ assert.deepEqual(parseValues('Melanie Rock | Ariat | E',e),{status:'Eliminated'});
+ assert.deepEqual(parseValues('Melanie Rock | Ariat',e),{});});
+test('screen',()=>{const r=recordsFromScreen({heading:'US Open Agility',lines:['Place | Handler | Dog | Time','1 | Brooke Ortale | Trust | 29.80 | 0 faults','2 | Jeremy Schuster | Dare | 30.02','Melanie Rock | Ariat'],sourceUrl:'https://results.gacsystems.com/'},ix,new Date('2026-11-18T15:00:00Z'));
+ assert.equal(r.length,2);assert.deepEqual(r[0],{handler:'Brooke Ortale',dog:'Trust',class:'US Open Agility',placement:1,time:'29.80',faults:0,sourceUrl:'https://results.gacsystems.com/',verifiedAt:'2026-11-18T15:00:00.000Z',date:'2026-11-18',height:'16'});
+ assert.equal(r[1].height,'20s');});
+import {merge} from '../publish.mjs';
+test('merge keeps old, adds new, ignores unchanged',()=>{
+ const allowed=new Set(['A|x','B|y']);
+ const cur={schemaVersion:1,updatedAt:'old',results:[{handler:'A',dog:'x',class:'C',time:'30.00',verifiedAt:'2026-11-18T10:00:00.000Z'}]};
+ let r=merge(cur,[{handler:'A',dog:'x',class:'C',time:'30.00',verifiedAt:'2026-11-18T11:00:00.000Z'}],allowed);
+ assert.equal(r.changed,0);assert.equal(r.data.results[0].verifiedAt,'2026-11-18T10:00:00.000Z');assert.equal(r.data.updatedAt,'old');
+ r=merge(cur,[{handler:'B',dog:'y',class:'C',placement:1},{handler:'Z',dog:'q',class:'C'}],allowed);
+ assert.equal(r.changed,1);assert.equal(r.data.results.length,2);
+});
