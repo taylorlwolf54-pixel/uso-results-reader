@@ -1,0 +1,14 @@
+{
+  "name": "uso-gac-reader",
+  "private": true,
+  "type": "module",
+  "description": "Reads public UKI US Open results and posts them to the US Open tracker",
+  "scripts": {
+    "start": "node reader.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "playwright": "1.65.0"
+  },
+  "engines": { "node": ">=20" }
+}
