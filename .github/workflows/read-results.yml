@@ -1,5 +1,5 @@
 # Reads UKI US Open results from results.gacsystems.com and publishes them to the tracker's results.json.
-# Each run keeps checking every 90 seconds for 55 minutes; a new run starts every hour
+# Each run keeps checking every 60 seconds for 55 minutes; a new run starts every hour
 # during event days (Nov 18–22, roughly 7 AM to 11 PM Eastern).
 name: Read US Open results
 
@@ -43,6 +43,7 @@ jobs:
         env:
           SPACEFAST_API_KEY: ${{ secrets.SPACEFAST_API_KEY }}
           RUN_MINUTES: ${{ github.event.inputs.minutes || '55' }}
+          POLL_SECONDS: '60'
           SNAPSHOT_DIR: ${{ github.event.inputs.snapshot == 'true' && 'snapshots' || '' }}
           DRY_RUN: ${{ github.event.inputs.dry_run == 'true' && '1' || '' }}
       - name: Keep screen snapshots
